@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Casdoor Login</title>
+</head>
+<body>
+<h1>Casdoor Login (Token in Cookie)</h1>
+
+<p id="status">Checking login status...</p>
+
+<button onclick="login()">Login with Casdoor</button>
+<button onclick="getDetails()">Get User Info</button>
+
+<pre id="result"></pre>
+
+<script>
+    let wasLoggedIn = localStorage.getItem("wasLoggedIn");
+
+    async function checkLogin() {
+        const res = await fetch("/me", {
+            credentials: "include"
+        });
+
+        if (res.status === 401) {
+            document.getElementById("status").textContent = "Not logged in";
+            localStorage.removeItem("wasLoggedIn");
+            return;
+        }
+
+        document.getElementById("status").textContent = "Already logged in!";
+
+        if (wasLoggedIn === "login-started") {
+            alert("Login successful!");
+            localStorage.setItem("wasLoggedIn", "true");
+        }
+    }
+
+    function login() {
+        localStorage.setItem("wasLoggedIn", "login-started");
+        window.location.href = "/login";
+    }
+
+    async function getDetails() {
+        const userRes = await fetch("/user-info", {
+            credentials: "include"
+        });
+
+        if (userRes.status === 401) {
+            document.getElementById("result").textContent = "401 Unauthorized";
+            return;
+        }
+
+        const user = await userRes.json();
+
+        const tokenRes = await fetch("/token", {
+            credentials: "include"
+        });
+
+        const token = await tokenRes.text();
+
+        document.cookie = "access_token=" + encodeURIComponent(token) + "; path=/; SameSite=Lax; Secure";
+
+        const result = {
+            userId: user.sub || user.id || "unknown",
+            username: user.name || user.preferred_username || "unknown",
+            email: user.email || "not provided",
+            token: token,
+            cookie: "access_token saved"
+        };
+
+        document.getElementById("result").textContent =
+            JSON.stringify(result, null, 2);
+    }
+
+    checkLogin();
+</script>
+</body>
+</html>
