@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Casdoor Login</title>
+</head>
+<body>
+<h1>Casdoor Login (Token in Cookie)</h1>
+
+<p id="status">Checking login status...</p>
+
+<button onclick="login()">Login with Casdoor</button>
+<button onclick="getDetails()">Get User Info</button>
+
+<pre id="result"></pre>
+
+<script>
+    let wasLoggedIn = localStorage.getItem("wasLoggedIn");
+
+    async function checkLogin() {
+        const res = await fetch("/user-info", {
+            credentials: "include"
+        });
+
+        if (res.status === 401) {
+            document.getElementById("status").textContent = "Not logged in";
+            localStorage.removeItem("wasLoggedIn");
+            return;
+        }
+
+        document.getElementById("status").textContent = "Already logged in!";
+
+        if (wasLoggedIn === "login-started") {
+            alert("Login successful!");
+            localStorage.setItem("wasLoggedIn", "true");
+        }
+    }
+
+    function login() {
+        localStorage.setItem("wasLoggedIn", "login-started");
+        window.location.href = "/login";
+    }
+
+    async function getDetails() {
+        const userRes = await fetch("/user-info", {
+            credentials: "include"
+        });
+
+        if (userRes.status === 401) {
+            document.getElementById("result").textContent =
+                "401 Unauthorized\nJWT token is missing, expired or has invalid signature.";
+            return;
+        }
+
+        const user = await userRes.json();
+
+        const result = {
+            validation: "JWT signature was validated locally on backend",
+            tokenSource: "access_token from cookie",
+            algorithm: "RS256",
+            userId: user.sub || user.id || "unknown",
+            username: user.name || user.preferred_username || "unknown",
+            email: user.email || "not provided",
+            issuer: user.iss || "unknown",
+            audience: user.aud || "unknown",
+            expiresAt: user.exp || "unknown"
+        };
+
+        document.getElementById("result").textContent =
+            JSON.stringify(result, null, 2);
+    }
+
+    checkLogin();
+</script>
+</body>
+</html>
